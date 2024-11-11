@@ -1,0 +1,421 @@
+// Library Management System
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <ctime>
+#include <iomanip>
+#include <limits>
+
+using namespace std;
+
+// Book Class
+class Book {
+private:
+    string isbn;
+    string title;
+    string author;
+    string category;
+    int totalCopies;
+    int availableCopies;
+    
+public:
+    Book(string isbn = "", string title = "", string author = "", string category = "", int copies = 0)
+        : isbn(isbn), title(title), author(author), category(category), 
+          totalCopies(copies), availableCopies(copies) {}
+    
+    // Getters
+string getISBN() const { return isbn; }
+    string getTitle() const { return title; }
+    string getAuthor() const { return author; }
+    string getCategory() const { return category; }
+    int getTotalCopies() const { return totalCopies; }
+    int getAvailableCopies() const { return availableCopies; }
+    
+    // Methods
+    bool isAvailable() const { return availableCopies > 0; }
+    void borrowBook() { if(availableCopies > 0) availableCopies--; }
+    void returnBook() { if(availableCopies < totalCopies) availableCopies++; }
+    
+    // Display book details
+    void display() const {
+ cout << "\nISBN: " << isbn
+             << "\nTitle: " << title
+             << "\nAuthor: " << author
+             << "\nCategory: " << category
+             << "\nTotal Copies: " << totalCopies
+             << "\nAvailable Copies: " << availableCopies << endl;
+    }
+    
+    // File I/O methods
+    string toFileString() const {
+        return isbn + "," + title + "," + author + "," + category + "," + 
+               to_string(totalCopies) + "," + to_string(availableCopies);
+    }
+    
+    void fromFileString(const string& str) {
+        size_t pos = 0;
+        string token;
+        vector<string> tokens;
+        string s = str;
+        while ((pos = s.find(",")) != string::npos) {
+            token = s.substr(0, pos);
+            tokens.push_back(token);
+            s.erase(0, pos + 1);
+        }
+        tokens.push_back(s);
+        
+        if(tokens.size() == 6) {
+            isbn = tokens[0];
+            title = tokens[1];
+ author = tokens[2];
+            category = tokens[3];
+            totalCopies = stoi(tokens[4]);
+            availableCopies = stoi(tokens[5]);
+        }
+    }
+};
+
+// Member Class
+class Member {
+private:
+    string id;
+    string name;
+    string email;
+    string phone;
+    vector<string> borrowedBooks; // Stores ISBN of borrowed books
+    
+public:
+    Member(string id = "", string name = "", string email = "", string phone = "")
+        : id(id), name(name), email(email), phone(phone) {}
+    
+ // Getters
+    string getId() const { return id; }
+    string getName() const { return name; }
+    
+    // Methods
+    void borrowBook(const string& isbn) {
+        borrowedBooks.push_back(isbn);
+    }
+    
+    bool returnBook(const string& isbn) {
+        for(auto it = borrowedBooks.begin(); it != borrowedBooks.end(); ++it) {
+            if(*it == isbn) {
+                borrowedBooks.erase(it);
+                return true;
+            }
+        }
+        return false;
+    }
+  bool hasBorrowedBook(const string& isbn) const {
+        return find(borrowedBooks.begin(), borrowedBooks.end(), isbn) != borrowedBooks.end();
+    }
+    
+    int getBorrowedCount() const {
+        return borrowedBooks.size();
+    }
+    
+    void display() const {
+        cout << "\nMember ID: " << id
+             << "\nName: " << name
+             << "\nEmail: " << email
+             << "\nPhone: " << phone
+             << "\nBorrowed Books: " << borrowedBooks.size() << endl;
+    }
+    
+    // File I/O methods
+    string toFileString() const {
+        string borrowedStr = "";
+        for(const auto& isbn : borrowedBooks) {
+            borrowedStr += isbn + ";";
+        }
+        return id + "," + name + "," + email + "," + phone + "," + borrowedStr;
+    }
+    
+   void fromFileString(const string& str) {
+        size_t pos = 0;
+        string token;
+        vector<string> tokens;
+        string s = str;
+        while ((pos = s.find(",")) != string::npos) {
+            token = s.substr(0, pos);
+            tokens.push_back(token);
+            s.erase(0, pos + 1);
+        }
+        
+        if(!s.empty()) tokens.push_back(s);
+        
+        if(tokens.size() >= 4) {
+            id = tokens[0];
+            name = tokens[1];
+            email = tokens[2];
+            phone = tokens[3];
+            
+            if(tokens.size() > 4) {
+                string borrowedStr = tokens[4];
+                size_t pos = 0;
+                while ((pos = borrowedStr.find(";")) != string::npos) {
+                    token = borrowedStr.substr(0, pos);
+                    if(!token.empty()) borrowedBooks.push_back(token);
+                    borrowedStr.erase(0, pos + 1);
+                }
+            }
+        }
+    }
+};
+// Library Management System Class
+class LibrarySystem {
+private:
+    vector<Book> books;
+    vector<Member> members;
+    const string BOOKS_FILE = "books.txt";
+    const string MEMBERS_FILE = "members.txt";
+    
+    // Helper methods
+    void saveBooks() {
+        ofstream file(BOOKS_FILE);
+        for(const auto& book : books) {
+            file << book.toFileString() << endl;
+        }
+        file.close();
+    }
+    
+    void saveMembers() {
+        ofstream file(MEMBERS_FILE);
+        for(const auto& member : members) {
+            file << member.toFileString() << endl;
+        }
+        file.close();
+    }
+    
+    void loadBooks() {
+        ifstream file(BOOKS_FILE);
+        string line;
+        while(getline(file, line)) {
+   Book book;
+            book.fromFileString(line);
+            books.push_back(book);
+        }
+        file.close();
+    }
+    
+    void loadMembers() {
+        ifstream file(MEMBERS_FILE);
+        string line;
+        while(getline(file, line)) {
+            Member member;
+            member.fromFileString(line);
+            members.push_back(member);
+        }
+        file.close();
+    }
+    
+public:
+    LibrarySystem() {
+        loadBooks();
+        loadMembers();
+    }
+~LibrarySystem() {
+        saveBooks();
+        saveMembers();
+    }
+    
+    // Book management methods
+    void addBook() {
+        string isbn, title, author, category;
+        int copies;
+        
+        cout << "\nEnter Book Details:";
+        cout << "\nISBN: "; cin >> isbn;
+        cin.ignore();
+        cout << "Title: "; getline(cin, title);
+        cout << "Author: "; getline(cin, author);
+        cout << "Category: "; getline(cin, category);
+        cout << "Number of Copies: "; cin >> copies;
+        
+        books.push_back(Book(isbn, title, author, category, copies));
+        saveBooks();
+        cout << "\nBook added successfully!" << endl;
+    }
+    
+    void searchBooks() {
+        string search;
+        cout << "\nEnter search term (title/author/ISBN): ";
+        cin.ignore();
+getline(cin, search);
+        
+        bool found = false;
+        for(const auto& book : books) {
+            if(book.getTitle().find(search) != string::npos ||
+               book.getAuthor().find(search) != string::npos ||
+               book.getISBN().find(search) != string::npos) {
+                book.display();
+                found = true;
+            }
+        }
+        
+        if(!found) cout << "\nNo books found matching your search." << endl;
+    }
+    
+    // Member management methods
+    void addMember() {
+        string id, name, email, phone;
+        
+        cout << "\nEnter Member Details:";
+        cout << "\nID: "; cin >> id;
+        cin.ignore();
+        cout << "Name: "; getline(cin, name);
+        cout << "Email: "; getline(cin, email);
+        cout << "Phone: "; getline(cin, phone);
+        
+        members.push_back(Member(id, name, email, phone));
+  saveMembers();
+        cout << "\nMember added successfully!" << endl;
+    }
+    
+    // Book borrowing and returning
+    void borrowBook() {
+        string memberId, isbn;
+        
+        cout << "\nEnter Member ID: "; cin >> memberId;
+        cout << "Enter Book ISBN: "; cin >> isbn;
+        
+        Member* member = nullptr;
+        Book* book = nullptr;
+        
+        // Find member and book
+        for(auto& m : members) {
+            if(m.getId() == memberId) member = &m;
+        }
+        for(auto& b : books) {
+            if(b.getISBN() == isbn) book = &b;
+        }
+        
+        if(!member || !book) {
+            cout << "\nInvalid member ID or book ISBN!" << endl;
+            return;
+        }
+ if(!book->isAvailable()) {
+            cout << "\nBook is not available for borrowing!" << endl;
+            return;
+        }
+        
+        if(member->getBorrowedCount() >= 3) {
+            cout << "\nMember has reached maximum borrowing limit!" << endl;
+            return;
+        }
+ member->borrowBook(isbn);
+        book->borrowBook();
+        saveBooks();
+        saveMembers();
+        cout << "\nBook borrowed successfully!" << endl;
+    }
+    
+    void returnBook() {
+        string memberId, isbn;
+        
+        cout << "\nEnter Member ID: "; cin >> memberId;
+        cout << "Enter Book ISBN: "; cin >> isbn;
+        
+        Member* member = nullptr;
+        Book* book = nullptr;
+        
+        // Find member and book
+        for(auto& m : members) {
+            if(m.getId() == memberId) member = &m;
+        }
+        for(auto& b : books) {
+            if(b.getISBN() == isbn) book = &b;
+        }
+        
+        if(!member || !book) {
+            cout << "\nInvalid member ID or book ISBN!" << endl;
+       return;
+        }
+        
+        if(!member->hasBorrowedBook(isbn)) {
+            cout << "\nThis book was not borrowed by this member!" << endl;
+            return;
+        }
+        
+        member->returnBook(isbn);
+        book->returnBook();
+        saveBooks();
+        saveMembers();
+        cout << "\nBook returned successfully!" << endl;
+    }
+    
+    // Display methods
+    void displayAllBooks() {
+        if(books.empty()) {
+            cout << "\nNo books in the library." << endl;
+            return;
+        }
+        
+        for(const auto& book : books) {
+            book.display();
+        }
+    }
+    
+    void displayAllMembers() {
+        if(members.empty()) {
+   cout << "\nNo members registered." << endl;
+            return;
+        }
+        
+        for(const auto& member : members) {
+            member.display();
+        }
+    }
+};
+
+// Main function with menu system
+int main() {
+    LibrarySystem library;
+    int choice;
+    
+    while(true) {
+        cout << "\n=== Library Management System ===";
+        cout << "\n1. Add Book";
+        cout << "\n2. Search Books";
+        cout << "\n3. Display All Books";
+        cout << "\n4. Add Member";
+        cout << "\n5. Display All Members";
+        cout << "\n6. Borrow Book";
+        cout << "\n7. Return Book";
+        cout << "\n8. Exit";
+        cout << "\nEnter your choice: ";
+        
+        cin >> choice;
+ switch(choice) {
+            case 1:
+                library.addBook();
+                break;
+            case 2:
+                library.searchBooks();
+                break;
+            case 3:
+                library.displayAllBooks();
+                break;
+            case 4:
+                library.addMember();
+                break;
+            case 5:
+                library.displayAllMembers();
+                break;
+            case 6:
+                library.borrowBook();
+                break;
+            case 7:
+                library.returnBook();
+                break;
+            case 8:
+                cout << "\nThank you for using the Library Management System!\n";
+                return 0;
+            default:
+        cout << "\nInvalid choice! Please try again.\n";
+        }
+    }
+    
+ return 0;
+}
